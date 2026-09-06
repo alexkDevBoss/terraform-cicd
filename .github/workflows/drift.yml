@@ -1,0 +1,38 @@
+name: Terraform Drift Detection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Check for Drift
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-central-1
+        run: |
+          terraform plan -refresh-only -detailed-exitcode -no-color
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "No drift detected"
+          elif [ $EXIT_CODE -eq 2 ]; then
+            echo "DRIFT DETECTED"
+            exit 1
+          else
+            echo "Terraform error"
+            exit 1
+          fi
